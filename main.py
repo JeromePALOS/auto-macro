@@ -18,6 +18,8 @@ play_thread = None
 events = []
 start_time = 0
 
+last_play_start  = 0
+
 # ---------------------------------
 # UTILS
 # ---------------------------------
@@ -156,12 +158,19 @@ def play_macro():
 # PLAY TOGGLE (FIXED)
 # ---------------------------------
 def toggle_play():
-    global play_thread
+    global play_thread, last_play_start
 
     if play_event.is_set():
         play_event.clear()
         log("⏹ Stopped")
         return
+
+    # cooldown
+    now = time.time()
+    if now - last_play_start < 1:
+        return
+
+    last_play_start = now
 
     if not events:
         log("⚠️ No macro")
@@ -174,6 +183,7 @@ def toggle_play():
     play_event.set()
 
     btn_play.config(text="⏹ Stop (F7)", bg="#43a047", fg="white")
+    log("⚠️ If it doesn't stop, keep holding F7")
 
     play_thread = threading.Thread(target=play_macro, daemon=True)
     play_thread.start()
