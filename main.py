@@ -88,7 +88,7 @@ def start_record():
     recording = True
     start_time = time.time()
 
-    btn_record.config(text="⏹ Stop Record (CTRL+ALT+A)")
+    btn_record.config(text="⏹ Stop Record (F6)", bg="#e53935", fg="white")
     log("🔴 Recording...")
 
 
@@ -96,7 +96,8 @@ def stop_record():
     global recording
     recording = False
 
-    btn_record.config(text="🔴 Record (CTRL+ALT+A)")
+    btn_record.config(text="🔴 Record (F6)", bg="#eee", fg="black")
+    btn_play.config(text="▶ Play Macro (F7)", bg="#eee", fg="black", state="normal")
     log("✅ Recording stopped")
 
 
@@ -122,7 +123,7 @@ def play_macro():
         return
 
     playing = True
-    btn_play.config(text="⏹ Stop Macro (CTRL+ALT+Z)")
+    btn_play.config(text="⏹ Stop Macro (F7)", bg="#43a047", fg="white")
     log("▶ Playing...")
 
     while playing:
@@ -140,7 +141,7 @@ def play_macro():
             # MOVE
             if etype == "move":
                 _, _, x, y = event
-                pyautogui.moveTo(x, y)
+                pyautogui.moveTo(x, y, _pause=False)
 
             # CLICK
             elif etype == "click":
@@ -159,7 +160,7 @@ def play_macro():
                 _, _, key = event
                 pyautogui.keyUp(key)
 
-    btn_play.config(text="▶ Play Macro (CTRL+ALT+Z)")
+    btn_play.config(text="▶ Play Macro (F7)", bg="#eee", fg="black")
     log("⏹ Stopped")
 
 
@@ -232,13 +233,25 @@ def spam_loop():
 def toggle_spam():
     global spam_running
 
+    # STOP
     if spam_running:
         spam_running = False
+
+        btn_spam.config(text="⚡ Spam (F8)", bg="#eee", fg="black")
+
+        log("⏹ Spam stopped")
+        return
+
+    # START
+    if can_spam():
+        spam_running = True
+
+        btn_spam.config(text="⏹ Stop Spam (F8)", bg="#43a047", fg="white")
+
+        threading.Thread(target=spam_loop, daemon=True).start()
+
     else:
-        if can_spam():
-            threading.Thread(target=spam_loop, daemon=True).start()
-        else:
-            log("⛔ Can't spam now")
+        log("⛔ Can't spam now")
 
 
 # ---------------------------------
@@ -251,10 +264,10 @@ root.geometry("560x470")
 title = tk.Label(root, text="🎮 Auto Macro", font=("Arial", 20, "bold"))
 title.pack(pady=10)
 
-btn_record = ttk.Button(root, text="🔴 Record (F6)", command=toggle_record)
+btn_record = tk.Button(root, text="🔴 Record (F6)", bg="#eee", fg="black", command=toggle_record)
 btn_record.pack(pady=5, ipadx=10, ipady=6)
 
-btn_play = ttk.Button(root, text="▶ Play Macro (F7)", command=toggle_play)
+btn_play = tk.Button(root, text="▶ Play Macro (F7)", bg="#eee", fg="black", state="disabled", command=toggle_play)
 btn_play.pack(pady=5, ipadx=10, ipady=6)
 
 ttk.Separator(root).pack(fill="x", pady=10)
@@ -262,22 +275,20 @@ ttk.Separator(root).pack(fill="x", pady=10)
 tk.Label(root, text="Keys to spam").pack()
 entry_keys = tk.Entry(root, justify="center")
 entry_keys.pack()
-entry_keys.insert(0, "a")
+entry_keys.insert(0, "e")
 
 tk.Label(root, text="Delay ms (0 = HOLD)").pack()
 entry_ms = tk.Entry(root, justify="center")
 entry_ms.pack()
-entry_ms.insert(0, "100")
+entry_ms.insert(0, "0")
 
-btn_spam = ttk.Button(root, text="⚡ Spam (F8)", command=toggle_spam)
+btn_spam = tk.Button(root, text="⚡ Spam (F8)", bg="#eee", fg="black", command=toggle_spam)
 btn_spam.pack(pady=5, ipadx=10, ipady=6)
 
 status_var = tk.StringVar()
 status_var.set("Ready")
 
 tk.Label(root, textvariable=status_var).pack(pady=10)
-
-tk.Label(root, text="F6 record | F7 play | F8 spam").pack()
 
 footer = tk.Frame(root)
 footer.pack(fill="both", expand=True)
@@ -306,8 +317,8 @@ mouse_listener.start()
 keyboard_listener.start()
 
 # HOTKEYS FIX (STABLE)
-keyboard.add_hotkey("f6", toggle_record)
-keyboard.add_hotkey("f7", toggle_play)
-keyboard.add_hotkey("f8", toggle_spam)
+keyboard.add_hotkey("f6", lambda: root.after(0, toggle_record))
+keyboard.add_hotkey("f7", lambda: root.after(0, toggle_play))
+keyboard.add_hotkey("f8", lambda: root.after(0, toggle_spam))
 
 root.mainloop()
