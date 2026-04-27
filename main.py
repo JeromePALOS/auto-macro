@@ -90,7 +90,7 @@ def start_record():
     recording = True
     start_time = time.time()
 
-    btn_record.config(text="⏹ Stop Record (F6)", bg="#e53935", fg="white")
+    btn_record.config(text="⏹ Stop (F6)", bg="#e53935", fg="white")
     log("🔴 Recording...")
 
 
@@ -99,7 +99,7 @@ def stop_record():
     recording = False
 
     btn_record.config(text="🔴 Record (F6)", bg="#eee", fg="black")
-    btn_play.config(text="▶ Play Macro (F7)", bg="#eee", fg="black", state="normal")
+    btn_play.config(text="▶ Play (F7)", bg="#eee", fg="black", state="normal")
     log("✅ Recording stopped")
 
 
@@ -148,7 +148,7 @@ def play_macro():
                 _, _, key = event
                 pyautogui.keyUp(key)
 
-    btn_play.config(text="▶ Play Macro (F7)", bg="#eee", fg="black")
+    btn_play.config(text="▶ Play (F7)", bg="#eee", fg="black")
     log("⏹ Stopped")
 
 
@@ -173,7 +173,7 @@ def toggle_play():
 
     play_event.set()
 
-    btn_play.config(text="⏹ Stop Macro (F7)", bg="#43a047", fg="white")
+    btn_play.config(text="⏹ Stop (F7)", bg="#43a047", fg="white")
 
     play_thread = threading.Thread(target=play_macro, daemon=True)
     play_thread.start()
@@ -260,7 +260,7 @@ title.pack(pady=10)
 btn_record = tk.Button(root, text="🔴 Record (F6)", bg="#eee", fg="black", command=toggle_record)
 btn_record.pack(pady=5, ipadx=10, ipady=6)
 
-btn_play = tk.Button(root, text="▶ Play Macro (F7)", bg="#eee", fg="black", state="disabled", command=toggle_play)
+btn_play = tk.Button(root, text="▶ Play (F7)", bg="#eee", fg="black", state="disabled", command=toggle_play)
 btn_play.pack(pady=5, ipadx=10, ipady=6)
 
 ttk.Separator(root).pack(fill="x", pady=10)
