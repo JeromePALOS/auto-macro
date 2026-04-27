@@ -7,11 +7,13 @@ import keyboard
 from pynput import mouse, keyboard as kb
 
 # ---------------------------------
-# STATES
+# STATES (FIXED)
 # ---------------------------------
 recording = False
-playing = False
 spam_running = False
+
+play_event = threading.Event()
+play_thread = None
 
 events = []
 start_time = 0
@@ -35,10 +37,10 @@ def parse_keys(text):
 
 
 # ---------------------------------
-# SAFETY LOCKS
+# SAFETY LOCKS (FIXED)
 # ---------------------------------
 def can_record():
-    return not playing and not spam_running
+    return not play_event.is_set() and not spam_running
 
 
 def can_play():
@@ -46,11 +48,11 @@ def can_play():
 
 
 def can_spam():
-    return not recording and not playing
+    return not recording and not play_event.is_set()
 
 
 # ---------------------------------
-# RECORD (MOUSE + KEYBOARD FIXED)
+# RECORD (MOUSE + KEYBOARD)
 # ---------------------------------
 def on_move(x, y):
     if recording:
@@ -109,41 +111,28 @@ def toggle_record():
 
 
 # ---------------------------------
-# PLAY / STOP TOGGLE
+# PLAY MACRO (FIXED)
 # ---------------------------------
 def play_macro():
-    global playing
+    prev = 0
 
-    if not events:
-        log("⚠️ No macro")
-        return
-
-    if not can_play():
-        log("⛔ Can't play now")
-        return
-
-    playing = True
-    btn_play.config(text="⏹ Stop Macro (F7)", bg="#43a047", fg="white")
-    log("▶ Playing...")
-
-    while playing:
-        prev = 0
-
+    while play_event.is_set():
         for event in events:
-            if not playing:
+            if not play_event.is_set():
                 break
 
             time.sleep(max(0, event[1] - prev))
             prev = event[1]
 
+            if not play_event.is_set():
+                break
+
             etype = event[0]
 
-            # MOVE
             if etype == "move":
                 _, _, x, y = event
                 pyautogui.moveTo(x, y, _pause=False)
 
-            # CLICK
             elif etype == "click":
                 _, _, x, y, button, pressed = event
                 if pressed:
@@ -151,7 +140,6 @@ def play_macro():
                 else:
                     pyautogui.mouseUp(x, y, button=button)
 
-            # KEY
             elif etype == "key_down":
                 _, _, key = event
                 pyautogui.keyDown(key)
@@ -164,17 +152,35 @@ def play_macro():
     log("⏹ Stopped")
 
 
+# ---------------------------------
+# PLAY TOGGLE (FIXED)
+# ---------------------------------
 def toggle_play():
-    global playing
+    global play_thread
 
-    if playing:
-        playing = False
-    else:
-        threading.Thread(target=play_macro, daemon=True).start()
+    if play_event.is_set():
+        play_event.clear()
+        log("⏹ Stopped")
+        return
+
+    if not events:
+        log("⚠️ No macro")
+        return
+
+    if not can_play():
+        log("⛔ Can't play now")
+        return
+
+    play_event.set()
+
+    btn_play.config(text="⏹ Stop Macro (F7)", bg="#43a047", fg="white")
+
+    play_thread = threading.Thread(target=play_macro, daemon=True)
+    play_thread.start()
 
 
 # ---------------------------------
-# SPAM (0ms FIX + HOLD FIX)
+# SPAM (FIXED)
 # ---------------------------------
 def press_combo(keys):
     for k in keys:
@@ -199,11 +205,8 @@ def spam_loop():
     spam_running = True
     log("⚡ Spam actif")
 
-    # -------------------------
-    # 0ms = HOLD MODE FIX
-    # -------------------------
     if delay == 0:
-        log("🔒 HOLD MODE (0ms)")
+        log("🔒 HOLD MODE")
 
         if len(keys) == 1 and len(keys[0]) == 1:
             while spam_running:
@@ -220,9 +223,6 @@ def spam_loop():
         log("⏹ Spam stopped")
         return
 
-    # -------------------------
-    # NORMAL MODE
-    # -------------------------
     while spam_running:
         for k in keys:
             pyautogui.press(k)
@@ -233,23 +233,16 @@ def spam_loop():
 def toggle_spam():
     global spam_running
 
-    # STOP
     if spam_running:
         spam_running = False
-
         btn_spam.config(text="⚡ Spam (F8)", bg="#eee", fg="black")
-
         log("⏹ Spam stopped")
         return
 
-    # START
     if can_spam():
         spam_running = True
-
         btn_spam.config(text="⏹ Stop Spam (F8)", bg="#43a047", fg="white")
-
         threading.Thread(target=spam_loop, daemon=True).start()
-
     else:
         log("⛔ Can't spam now")
 
@@ -289,7 +282,6 @@ status_var = tk.StringVar()
 status_var.set("Ready")
 
 tk.Label(root, textvariable=status_var).pack(pady=10)
-
 footer = tk.Frame(root)
 footer.pack(fill="both", expand=True)
 
@@ -301,22 +293,15 @@ tk.Label(
 ).place(relx=1.0, rely=1.0, x=-10, y=-10, anchor="se")
 
 # ---------------------------------
-# LISTENERS FIXED
+# LISTENERS
 # ---------------------------------
-mouse_listener = mouse.Listener(
-    on_move=on_move,
-    on_click=on_click
-)
-
-keyboard_listener = kb.Listener(
-    on_press=on_press,
-    on_release=on_release
-)
+mouse_listener = mouse.Listener(on_move=on_move, on_click=on_click)
+keyboard_listener = kb.Listener(on_press=on_press, on_release=on_release)
 
 mouse_listener.start()
 keyboard_listener.start()
 
-# HOTKEYS FIX (STABLE)
+# HOTKEYS
 keyboard.add_hotkey("f6", lambda: root.after(0, toggle_record))
 keyboard.add_hotkey("f7", lambda: root.after(0, toggle_play))
 keyboard.add_hotkey("f8", lambda: root.after(0, toggle_spam))
